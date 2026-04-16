@@ -26,16 +26,21 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String email = etEmail.getText().toString();
-                String password = etPassword.getText().toString();
+                String email = etEmail.getText().toString().trim();
+                String password = etPassword.getText().toString().trim();
 
                 android.content.SharedPreferences sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE);
                 String savedEmail = sharedPref.getString("Email", "");
                 String savedPass = sharedPref.getString("Password", "");
 
+                String savedName = sharedPref.getString("Name", "Người dùng");
+
                 if (email.equals(savedEmail) && password.equals(savedPass)) {
-                    Intent intent = new Intent(LoginActivity.this, ProfileActivity.class);
+
+                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                    intent.putExtra("LOGGED_IN_USER", savedName);
                     startActivity(intent);
+
                     finish();
                 } else {
                     Toast.makeText(LoginActivity.this, "Sai Email hoặc Mật khẩu!", Toast.LENGTH_SHORT).show();
