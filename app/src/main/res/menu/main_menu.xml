@@ -13,4 +13,8 @@
         android:id="@+id/menu_sort_author"
         android:title="Sort by Author"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_find_friends"
+        android:title="Find Friends from Contacts"
+        app:showAsAction="never" />
 </menu>

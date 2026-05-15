@@ -212,6 +212,10 @@ public class MainActivity extends AppCompatActivity {
             adapter.notifyDataSetChanged();
             Toast.makeText(this, "Đã sắp xếp theo tên tác giả", Toast.LENGTH_SHORT).show();
             return true;
+        } else if (id == R.id.menu_find_friends) {
+            Intent intent = new Intent(MainActivity.this, FriendSuggestionActivity.class);
+            startActivity(intent);
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
