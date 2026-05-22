@@ -14,8 +14,6 @@ import android.widget.Toast;
 import android.content.Intent;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -25,6 +23,17 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import api.ApiClient;
+import api.ApiService;
+import models.CreatePost;
+import models.DeleteResponse;
+import models.PostResponse;
+import models.PostsResponse;
+import models.Post;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class MainActivity extends AppCompatActivity {
     private EditText etWriteIdea;
     private Button btnPost;
@@ -32,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private List<Post> postList;
     private PostAdapter adapter;
     private String loggedInUser;
+    private int loggedInUserId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,132 +51,94 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        SharedPreferences userPrefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         loggedInUser = getIntent().getStringExtra("LOGGED_IN_USER");
-        if(loggedInUser == null)
-        {
-            SharedPreferences userPrefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        if (loggedInUser == null) {
             loggedInUser = userPrefs.getString("Name", "Người dùng");
         }
+        loggedInUserId = getIntent().getIntExtra("LOGGED_IN_USER_ID", -1);
+        if (loggedInUserId == -1) {
+            loggedInUserId = userPrefs.getInt("Id", -1);
+        }
+
         etWriteIdea = findViewById(R.id.etWriteIdea);
         btnPost = findViewById(R.id.btnPost);
         lvPosts = findViewById(R.id.lvPosts);
 
         postList = new ArrayList<>();
-
-        loadPosts();
-
-        createMockPosts();
-
         adapter = new PostAdapter(this, postList);
         lvPosts.setAdapter(adapter);
+
         lvPosts.setOnItemClickListener((parent, view, position, id) -> {
             Post clickedPost = postList.get(position);
             Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
-            intent.putExtra("POST_AUTHOR", clickedPost.getName());
+            intent.putExtra("POST_AUTHOR_ID", clickedPost.getUserId());
+            if (clickedPost.getAuthor() != null) {
+                intent.putExtra("POST_AUTHOR_NAME", clickedPost.getAuthor().getName());
+            }
             intent.putExtra("CURRENT_USER", loggedInUser);
+            intent.putExtra("CURRENT_USER_ID", loggedInUserId);
             startActivity(intent);
         });
+
         btnPost.setOnClickListener(v -> addNewPost());
 
         registerForContextMenu(lvPosts);
+
+        loadPosts();
     }
 
     private void addNewPost() {
         String content = etWriteIdea.getText().toString().trim();
         if (content.isEmpty()){
-            Toast.makeText(this, "Vui long nhap noi dung!",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Vui lòng nhập nội dung!", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        String currentDate = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
+        ApiService apiService = ApiClient.getApiService();
+        CreatePost createPostRequest = new CreatePost(loggedInUserId, content);
 
-        Post newPost = new Post(loggedInUser, currentDate, content);
-
-        postList.add(0, newPost);
-        adapter.notifyDataSetChanged();
-        etWriteIdea.setText("");
-        lvPosts.setSelection(0);
-        savePosts();
-    }
-
-    private void savePosts() {
-        SharedPreferences sharedPreferences = getSharedPreferences("PostData", MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-
-        try {
-            JSONArray jsonArray = new JSONArray();
-            for (Post post : postList) {
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("name", post.getName());
-                jsonObject.put("date", post.getDate());
-                jsonObject.put("content", post.getContent());
-                jsonArray.put(jsonObject);
+        apiService.createPost(createPostRequest).enqueue(new Callback<PostResponse>() {
+            @Override
+            public void onResponse(Call<PostResponse> call, Response<PostResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    Toast.makeText(MainActivity.this, "Đăng bài thành công!", Toast.LENGTH_SHORT).show();
+                    etWriteIdea.setText("");
+                    loadPosts();
+                } else {
+                    Toast.makeText(MainActivity.this, "Không thể tạo bài đăng!", Toast.LENGTH_SHORT).show();
+                }
             }
-            editor.putString("PostListString", jsonArray.toString());
-            editor.apply();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
+            @Override
+            public void onFailure(Call<PostResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
+
     private void loadPosts() {
-        SharedPreferences sharedPreferences = getSharedPreferences("PostData", MODE_PRIVATE);
-        String jsonString = sharedPreferences.getString("PostListString", "[]");
-
-        try {
-            JSONArray jsonArray = new JSONArray(jsonString);
-            for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject jsonObject = jsonArray.getJSONObject(i);
-                String name = jsonObject.getString("name");
-                String date = jsonObject.getString("date");
-                String content = jsonObject.getString("content");
-
-                postList.add(new Post(name, date, content));
+        ApiService apiService = ApiClient.getApiService();
+        apiService.getAllPosts().enqueue(new Callback<PostsResponse>() {
+            @Override
+            public void onResponse(Call<PostsResponse> call, Response<PostsResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    postList.clear();
+                    List<Post> posts = response.body().getData();
+                    if (posts != null) {
+                        postList.addAll(posts);
+                    }
+                    adapter.notifyDataSetChanged();
+                } else {
+                    Toast.makeText(MainActivity.this, "Không thể tải danh sách bài đăng!", Toast.LENGTH_SHORT).show();
+                }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 
-    private void createMockPosts() {
-        if (postList.isEmpty()) {
-            postList.add(new Post(
-                    "Alice",
-                    "24/03/2026",
-                    "This is test content.\nThis is test content."
-            ));
-
-            postList.add(new Post(
-                    "Zack",
-                    "01/05/2026",
-                    "Đang cày Arknights IS6 ending 2, có ai qua được chưa cho xin ít tip với!"
-            ));
-
-            postList.add(new Post(
-                    "Alice",
-                    "15/04/2026",
-                    "Vừa xử lý xong lỗi 'no space left on device' trên máy ảo Ubuntu. Mất cả buổi chiều!"
-            ));
-
-            postList.add(new Post(
-                    "Nguyễn Xuân Vĩ",
-                    "04/05/2026",
-                    "Đang test tính năng Sort và Menu của Simple Social App. Mọi thứ hoạt động hoàn hảo!"
-            ));
-
-            postList.add(new Post(
-                    "Bob",
-                    "20/02/2026",
-                    "Sáng nay pha cà phê bằng phin nhôm Trung Nguyên ngon bá cháy. Năng lượng tràn trề để code C++!"
-            ));
-
-            postList.add(new Post(
-                    "Charlie",
-                    "10/03/2026",
-                    "Hóng sự kiện The Game Awards sắp tới quá, không biết năm nay có game nào đột phá không."
-            ));
-
-            savePosts();
-        }
+            @Override
+            public void onFailure(Call<PostsResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
@@ -181,22 +153,18 @@ public class MainActivity extends AppCompatActivity {
 
         if (id == R.id.menu_profile) {
             Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
+            intent.putExtra("POST_AUTHOR_ID", loggedInUserId);
+            intent.putExtra("POST_AUTHOR_NAME", loggedInUser);
             intent.putExtra("CURRENT_USER", loggedInUser);
+            intent.putExtra("CURRENT_USER_ID", loggedInUserId);
             startActivity(intent);
             return true;
         } else if (id == R.id.menu_sort_date) {
             Collections.sort(postList, new Comparator<Post>() {
-                SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
                 @Override
                 public int compare(Post p1, Post p2) {
-                    try {
-                        Date date1 = format.parse(p1.getDate());
-                        Date date2 = format.parse(p2.getDate());
-                        return date2.compareTo(date1);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        return 0;
-                    }
+                    if (p1.getCreatedAt() == null || p2.getCreatedAt() == null) return 0;
+                    return p2.getCreatedAt().compareTo(p1.getCreatedAt());
                 }
             });
             adapter.notifyDataSetChanged();
@@ -206,7 +174,9 @@ public class MainActivity extends AppCompatActivity {
             Collections.sort(postList, new Comparator<Post>() {
                 @Override
                 public int compare(Post p1, Post p2) {
-                    return p1.getName().compareToIgnoreCase(p2.getName());
+                    String name1 = (p1.getAuthor() != null) ? p1.getAuthor().getName() : "";
+                    String name2 = (p2.getAuthor() != null) ? p2.getAuthor().getName() : "";
+                    return name1.compareToIgnoreCase(name2);
                 }
             });
             adapter.notifyDataSetChanged();
@@ -214,6 +184,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.menu_find_friends) {
             Intent intent = new Intent(MainActivity.this, FriendSuggestionActivity.class);
+            intent.putExtra("CURRENT_USER_ID", loggedInUserId);
             startActivity(intent);
             return true;
         }
@@ -238,15 +209,36 @@ public class MainActivity extends AppCompatActivity {
 
         if (id == R.id.menu_detail) {
             Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
-            intent.putExtra("POST_AUTHOR", selectedPost.getName());
+            intent.putExtra("POST_AUTHOR_ID", selectedPost.getUserId());
+            if (selectedPost.getAuthor() != null) {
+                intent.putExtra("POST_AUTHOR_NAME", selectedPost.getAuthor().getName());
+            }
             intent.putExtra("CURRENT_USER", loggedInUser);
+            intent.putExtra("CURRENT_USER_ID", loggedInUserId);
             startActivity(intent);
             return true;
         } else if (id == R.id.menu_hide) {
-            postList.remove(position);
-            adapter.notifyDataSetChanged();
-            savePosts();
-            Toast.makeText(this, "Đã ẩn bài đăng", Toast.LENGTH_SHORT).show();
+            if (selectedPost.getUserId() != loggedInUserId) {
+                Toast.makeText(this, "Bạn không thể xóa bài đăng của người khác!", Toast.LENGTH_SHORT).show();
+                return true;
+            }
+            ApiService apiService = ApiClient.getApiService();
+            apiService.deletePost(selectedPost.getId()).enqueue(new Callback<DeleteResponse>() {
+                @Override
+                public void onResponse(Call<DeleteResponse> call, Response<DeleteResponse> response) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        Toast.makeText(MainActivity.this, "Đã xóa bài đăng!", Toast.LENGTH_SHORT).show();
+                        loadPosts();
+                    } else {
+                        Toast.makeText(MainActivity.this, "Không thể xóa bài đăng!", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<DeleteResponse> call, Throwable t) {
+                    Toast.makeText(MainActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
             return true;
         }
         return super.onContextItemSelected(item);
