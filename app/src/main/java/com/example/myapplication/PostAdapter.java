@@ -1,4 +1,5 @@
 package com.example.myapplication;
+
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,6 +9,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import java.util.List;
+
+import models.Post;
 
 public class PostAdapter extends ArrayAdapter<Post> {
 
@@ -30,15 +33,18 @@ public class PostAdapter extends ArrayAdapter<Post> {
         } else {
             holder = (ViewHolder) convertView.getTag();
         }
+
         Post post = getItem(position);
         if (post != null) {
-            holder.tvName.setText(post.getName());
-            holder.tvDate.setText(post.getDate());
+            String authorName = (post.getAuthor() != null) ? post.getAuthor().getName() : "Người dùng";
+            holder.tvName.setText(authorName);
+            holder.tvDate.setText(post.getCreatedAt());
             holder.tvContent.setText(post.getContent());
         }
 
         return convertView;
     }
+
     private static class ViewHolder {
         TextView tvName, tvDate, tvContent;
     }

@@ -50,6 +50,21 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="Phone Number"
+        android:textStyle="bold"
+        android:textColor="#000000" />
+    <EditText
+        android:id="@+id/etPhoneRegister"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:inputType="phone"
+        android:background="@drawable/box_border"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:text="Password"
         android:textStyle="bold"
         android:textColor="#000000" />

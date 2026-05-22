@@ -1,0 +1,614 @@
+{
+    "swagger": "2.0",
+    "basePath": "/",
+    "paths": {
+        "/api/login": {
+            "post": {
+                "responses": {
+                    "401": {
+                        "description": "Invalid email or password"
+                    },
+                    "400": {
+                        "description": "Missing required fields"
+                    },
+                    "200": {
+                        "description": "Login successful",
+                        "schema": {
+                            "$ref": "#/definitions/LoginResponse"
+                        }
+                    }
+                },
+                "summary": "Login user",
+                "operationId": "post_login",
+                "parameters": [
+                    {
+                        "name": "payload",
+                        "required": true,
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/Login"
+                        }
+                    }
+                ],
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/api/posts": {
+            "post": {
+                "responses": {
+                    "404": {
+                        "description": "User not found"
+                    },
+                    "400": {
+                        "description": "Content cannot be empty"
+                    },
+                    "201": {
+                        "description": "Post created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/PostResponse"
+                        }
+                    }
+                },
+                "summary": "Create a new post",
+                "operationId": "post_all_posts",
+                "parameters": [
+                    {
+                        "name": "payload",
+                        "required": true,
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/CreatePost"
+                        }
+                    }
+                ],
+                "tags": [
+                    "posts"
+                ]
+            },
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "List of all posts",
+                        "schema": {
+                            "$ref": "#/definitions/PostsResponse"
+                        }
+                    }
+                },
+                "summary": "Get all posts",
+                "operationId": "get_all_posts",
+                "tags": [
+                    "posts"
+                ]
+            }
+        },
+        "/api/posts/user/{user_id}": {
+            "parameters": [
+                {
+                    "name": "user_id",
+                    "in": "path",
+                    "required": true,
+                    "type": "integer"
+                }
+            ],
+            "get": {
+                "responses": {
+                    "404": {
+                        "description": "User not found"
+                    },
+                    "200": {
+                        "description": "User posts retrieved",
+                        "schema": {
+                            "$ref": "#/definitions/PostsResponse"
+                        }
+                    }
+                },
+                "summary": "Get posts by user",
+                "operationId": "get_user_posts",
+                "tags": [
+                    "posts"
+                ]
+            }
+        },
+        "/api/posts/{post_id}": {
+            "parameters": [
+                {
+                    "name": "post_id",
+                    "in": "path",
+                    "required": true,
+                    "type": "integer"
+                }
+            ],
+            "delete": {
+                "responses": {
+                    "404": {
+                        "description": "Post not found"
+                    },
+                    "200": {
+                        "description": "Post deleted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/DeleteResponse"
+                        }
+                    }
+                },
+                "summary": "Delete a post",
+                "operationId": "delete_delete_post",
+                "tags": [
+                    "posts"
+                ]
+            }
+        },
+        "/api/register": {
+            "post": {
+                "responses": {
+                    "409": {
+                        "description": "Email or phone already exists"
+                    },
+                    "400": {
+                        "description": "Missing required fields"
+                    },
+                    "201": {
+                        "description": "User registered successfully",
+                        "schema": {
+                            "$ref": "#/definitions/RegisterResponse"
+                        }
+                    }
+                },
+                "summary": "Register a new user",
+                "operationId": "post_register",
+                "parameters": [
+                    {
+                        "name": "payload",
+                        "required": true,
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/Register"
+                        }
+                    }
+                ],
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/api/users/emails": {
+            "get": {
+                "responses": {
+                    "500": {
+                        "description": "Internal server error"
+                    },
+                    "200": {
+                        "description": "User emails retrieved successfully"
+                    }
+                },
+                "summary": "Get list of all user emails",
+                "operationId": "get_list_user_emails",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/api/users/{user_id}/friends": {
+            "parameters": [
+                {
+                    "name": "user_id",
+                    "in": "path",
+                    "required": true,
+                    "type": "integer"
+                }
+            ],
+            "get": {
+                "responses": {
+                    "404": {
+                        "description": "User not found"
+                    },
+                    "200": {
+                        "description": "Friends retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/FriendsResponse"
+                        }
+                    }
+                },
+                "summary": "Get all friends of a user",
+                "operationId": "get_user_friends",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/api/users/{user_id}/profile": {
+            "parameters": [
+                {
+                    "name": "user_id",
+                    "in": "path",
+                    "required": true,
+                    "type": "integer"
+                }
+            ],
+            "get": {
+                "responses": {
+                    "404": {
+                        "description": "User not found"
+                    },
+                    "200": {
+                        "description": "Profile retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/ProfileResponse"
+                        }
+                    }
+                },
+                "summary": "Get a user profile by user ID",
+                "operationId": "get_user_profile",
+                "tags": [
+                    "auth"
+                ]
+            },
+            "patch": {
+                "responses": {
+                    "409": {
+                        "description": "Phone already exists"
+                    },
+                    "404": {
+                        "description": "User not found"
+                    },
+                    "400": {
+                        "description": "No valid fields provided"
+                    },
+                    "200": {
+                        "description": "Profile updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/UpdateProfileResponse"
+                        }
+                    }
+                },
+                "summary": "Update a user profile by user ID",
+                "operationId": "patch_user_profile",
+                "parameters": [
+                    {
+                        "name": "payload",
+                        "required": true,
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/UpdateProfile"
+                        }
+                    }
+                ],
+                "tags": [
+                    "auth"
+                ]
+            }
+        }
+    },
+    "info": {
+        "title": "Social Network API",
+        "version": "1.0",
+        "description": "A simple social network API with user authentication and posts"
+    },
+    "produces": [
+        "application/json"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "tags": [
+        {
+            "name": "auth",
+            "description": "Authentication operations"
+        },
+        {
+            "name": "posts",
+            "description": "Post operations"
+        }
+    ],
+    "definitions": {
+        "Register": {
+            "required": [
+                "email",
+                "name",
+                "password",
+                "phone"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "User name",
+                    "example": "John Doe"
+                },
+                "email": {
+                    "type": "string",
+                    "description": "User email",
+                    "example": "user@example.com"
+                },
+                "phone": {
+                    "type": "string",
+                    "description": "User phone number",
+                    "example": "1234567890"
+                },
+                "password": {
+                    "type": "string",
+                    "description": "User password",
+                    "example": "password123"
+                }
+            },
+            "type": "object"
+        },
+        "RegisterResponse": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "User registered successfully"
+                },
+                "user": {
+                    "$ref": "#/definitions/User"
+                }
+            },
+            "type": "object"
+        },
+        "User": {
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "description": "User ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "User name"
+                },
+                "address": {
+                    "type": "string",
+                    "description": "User address"
+                },
+                "avatar_url": {
+                    "type": "string",
+                    "description": "Profile avatar URL"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Profile description"
+                },
+                "email": {
+                    "type": "string",
+                    "description": "User email"
+                },
+                "phone": {
+                    "type": "string",
+                    "description": "User phone"
+                },
+                "created_at": {
+                    "type": "string",
+                    "description": "Creation timestamp"
+                }
+            },
+            "type": "object"
+        },
+        "Login": {
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "description": "User email",
+                    "example": "user@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "description": "User password",
+                    "example": "password123"
+                }
+            },
+            "type": "object"
+        },
+        "LoginResponse": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Login successful"
+                },
+                "user": {
+                    "$ref": "#/definitions/User"
+                }
+            },
+            "type": "object"
+        },
+        "UpdateProfile": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "User name",
+                    "example": "John Doe"
+                },
+                "address": {
+                    "type": "string",
+                    "description": "User address",
+                    "example": "123 Main St"
+                },
+                "avatar_url": {
+                    "type": "string",
+                    "description": "Profile avatar URL",
+                    "example": "https://example.com/avatar.jpg"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Profile description",
+                    "example": "Software developer"
+                },
+                "phone": {
+                    "type": "string",
+                    "description": "User phone number",
+                    "example": "1234567890"
+                }
+            },
+            "type": "object"
+        },
+        "ProfileResponse": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Profile retrieved successfully"
+                },
+                "user": {
+                    "$ref": "#/definitions/User"
+                }
+            },
+            "type": "object"
+        },
+        "UpdateProfileResponse": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Profile updated successfully"
+                },
+                "user": {
+                    "$ref": "#/definitions/User"
+                }
+            },
+            "type": "object"
+        },
+        "FriendsResponse": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Friends retrieved successfully"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "description": "User ID"
+                },
+                "count": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "friends": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/User"
+                    }
+                }
+            },
+            "type": "object"
+        },
+        "CreatePost": {
+            "required": [
+                "content",
+                "user_id"
+            ],
+            "properties": {
+                "user_id": {
+                    "type": "integer",
+                    "description": "User ID",
+                    "example": 1
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Post content",
+                    "example": "This is my first post!"
+                }
+            },
+            "type": "object"
+        },
+        "PostResponse": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Post created successfully"
+                },
+                "data": {
+                    "$ref": "#/definitions/Post"
+                }
+            },
+            "type": "object"
+        },
+        "Post": {
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "description": "Post ID"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "description": "User ID"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Post content"
+                },
+                "created_at": {
+                    "type": "string",
+                    "description": "Creation timestamp"
+                },
+                "author": {
+                    "type": "object",
+                    "description": "Author information"
+                }
+            },
+            "type": "object"
+        },
+        "PostsResponse": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Post"
+                    }
+                },
+                "count": {
+                    "type": "integer",
+                    "example": 1
+                }
+            },
+            "type": "object"
+        },
+        "DeleteResponse": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Post deleted successfully"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "responses": {
+        "ParseError": {
+            "description": "When a mask can't be parsed"
+        },
+        "MaskError": {
+            "description": "When any error occurs on mask"
+        }
+    }
+}

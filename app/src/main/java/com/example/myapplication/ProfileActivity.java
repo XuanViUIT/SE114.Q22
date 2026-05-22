@@ -1,6 +1,7 @@
 package com.example.myapplication;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -10,12 +11,28 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
+import api.ApiClient;
+import api.ApiService;
+import models.ProfileResponse;
+import models.UpdateProfile;
+import models.UpdateProfileResponse;
+import models.User;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class ProfileActivity extends AppCompatActivity {
 
     private TextView tvHeaderName;
     private ImageView ivAvatar;
     private EditText etName, etEmail, etAddress, etAvatarUrl, etDescription;
     private Button btnSave, btnLogout;
+    private SharedPreferences sharedPref;
+    
+    private int currentUserId;
+    private String currentUser;
+    private int postAuthorId;
+    private String postAuthorName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,84 +49,144 @@ public class ProfileActivity extends AppCompatActivity {
         btnSave = findViewById(R.id.btnSave);
         btnLogout = findViewById(R.id.btnLogout);
 
-        android.content.SharedPreferences sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE);
 
-        String postAuthor = getIntent().getStringExtra("POST_AUTHOR");
-        String currentUser = getIntent().getStringExtra("CURRENT_USER");
+        currentUserId = getIntent().getIntExtra("CURRENT_USER_ID", -1);
+        if (currentUserId == -1) {
+            currentUserId = sharedPref.getInt("Id", -1);
+        }
+        
+        currentUser = getIntent().getStringExtra("CURRENT_USER");
+        if (currentUser == null) {
+            currentUser = sharedPref.getString("Name", "");
+        }
 
-        if (currentUser == null) currentUser = sharedPref.getString("Name", "");
-        if (postAuthor == null) postAuthor = currentUser;
+        postAuthorId = getIntent().getIntExtra("POST_AUTHOR_ID", -1);
+        if (postAuthorId == -1) {
+            postAuthorId = currentUserId;
+        }
 
-        if (postAuthor.equals(currentUser)) {
-            String savedEmail = sharedPref.getString("Email", "");
-            String savedAddress = sharedPref.getString("Address", "");
-            String savedAvatarUrl = sharedPref.getString("AvatarUrl", "");
-            String savedDescription = sharedPref.getString("Description", "");
+        postAuthorName = getIntent().getStringExtra("POST_AUTHOR_NAME");
+        if (postAuthorName == null) {
+            postAuthorName = currentUser;
+        }
 
-            tvHeaderName.setText(currentUser);
-            etName.setText(currentUser);
-            etEmail.setText(savedEmail);
-            etAddress.setText(savedAddress);
-            etAvatarUrl.setText(savedAvatarUrl);
-            etDescription.setText(savedDescription);
+        boolean isSelf = (postAuthorId == currentUserId);
 
-            if (!savedAvatarUrl.isEmpty()) {
-                com.bumptech.glide.Glide.with(ProfileActivity.this)
-                        .load(savedAvatarUrl)
-                        .placeholder(android.R.drawable.ic_menu_gallery)
-                        .error(android.R.drawable.ic_dialog_alert)
-                        .into(ivAvatar);
-            }
-
+        if (isSelf) {
             enableEditing(true);
             btnSave.setVisibility(View.VISIBLE);
             btnLogout.setVisibility(View.VISIBLE);
-
         } else {
-            tvHeaderName.setText(postAuthor);
-            etName.setText(postAuthor);
-
-            etEmail.setText("Hided");
-            etAddress.setText("Hided");
-            etAvatarUrl.setText("");
-            etDescription.setText("");
-
             enableEditing(false);
             btnSave.setVisibility(View.GONE);
             btnLogout.setVisibility(View.GONE);
         }
+
+        loadProfile(postAuthorId, isSelf);
 
         btnSave.setOnClickListener(v -> {
             String newName = etName.getText().toString().trim();
             String newAddress = etAddress.getText().toString().trim();
             String newAvatarUrl = etAvatarUrl.getText().toString().trim();
             String newDescription = etDescription.getText().toString().trim();
+            String currentPhone = sharedPref.getString("Phone", "");
 
-            android.content.SharedPreferences.Editor editor = sharedPref.edit();
-            editor.putString("Name", newName);
-            editor.putString("Address", newAddress);
-            editor.putString("AvatarUrl", newAvatarUrl);
-            editor.putString("Description", newDescription);
-            editor.apply();
-
-            tvHeaderName.setText(newName);
-
-            if (!newAvatarUrl.isEmpty()) {
-                com.bumptech.glide.Glide.with(ProfileActivity.this)
-                        .load(newAvatarUrl)
-                        .placeholder(android.R.drawable.ic_menu_gallery)
-                        .error(android.R.drawable.ic_dialog_alert)
-                        .into(ivAvatar);
+            if (newName.isEmpty()) {
+                Toast.makeText(ProfileActivity.this, "Tên không được để trống!", Toast.LENGTH_SHORT).show();
+                return;
             }
 
-            Toast.makeText(ProfileActivity.this, "Đã lưu thông tin!", Toast.LENGTH_SHORT).show();
+            ApiService apiService = ApiClient.getApiService();
+            UpdateProfile updatePayload = new UpdateProfile(newName, currentPhone, newAddress, newDescription, newAvatarUrl);
+
+            apiService.patchUserProfile(currentUserId, updatePayload).enqueue(new Callback<UpdateProfileResponse>() {
+                @Override
+                public void onResponse(Call<UpdateProfileResponse> call, Response<UpdateProfileResponse> response) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        UpdateProfileResponse updateResponse = response.body();
+                        if ("success".equals(updateResponse.getStatus()) && updateResponse.getUser() != null) {
+                            User updatedUser = updateResponse.getUser();
+                            
+                            SharedPreferences.Editor editor = sharedPref.edit();
+                            editor.putString("Name", updatedUser.getName());
+                            editor.putString("Address", updatedUser.getAddress() != null ? updatedUser.getAddress() : "");
+                            editor.putString("AvatarUrl", updatedUser.getAvatarUrl() != null ? updatedUser.getAvatarUrl() : "");
+                            editor.putString("Description", updatedUser.getDescription() != null ? updatedUser.getDescription() : "");
+                            editor.apply();
+
+                            tvHeaderName.setText(updatedUser.getName());
+                            
+                            String avatarUrl = updatedUser.getAvatarUrl();
+                            if (avatarUrl != null && !avatarUrl.isEmpty()) {
+                                com.bumptech.glide.Glide.with(ProfileActivity.this)
+                                        .load(avatarUrl)
+                                        .placeholder(android.R.drawable.ic_menu_gallery)
+                                        .error(android.R.drawable.ic_dialog_alert)
+                                        .into(ivAvatar);
+                            }
+
+                            Toast.makeText(ProfileActivity.this, "Đã lưu thông tin!", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(ProfileActivity.this, "Lưu thất bại: " + updateResponse.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        Toast.makeText(ProfileActivity.this, "Lưu thất bại (Lỗi Server)!", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<UpdateProfileResponse> call, Throwable t) {
+                    Toast.makeText(ProfileActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
         });
 
         btnLogout.setOnClickListener(v -> {
+            SharedPreferences.Editor editor = sharedPref.edit();
+            editor.clear();
+            editor.apply();
+            
             Intent intent = new Intent(ProfileActivity.this, LoginActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             finish();
+        });
+    }
+
+    private void loadProfile(int userId, boolean isSelf) {
+        ApiService apiService = ApiClient.getApiService();
+        apiService.getUserProfile(userId).enqueue(new Callback<ProfileResponse>() {
+            @Override
+            public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    User user = response.body().getUser();
+                    if (user != null) {
+                        tvHeaderName.setText(user.getName());
+                        etName.setText(user.getName());
+                        etEmail.setText(isSelf ? user.getEmail() : "Hided");
+                        etAddress.setText(user.getAddress() != null ? user.getAddress() : "");
+                        etAvatarUrl.setText(user.getAvatarUrl() != null ? user.getAvatarUrl() : "");
+                        etDescription.setText(user.getDescription() != null ? user.getDescription() : "");
+
+                        String avatarUrl = user.getAvatarUrl();
+                        if (avatarUrl != null && !avatarUrl.isEmpty()) {
+                            com.bumptech.glide.Glide.with(ProfileActivity.this)
+                                    .load(avatarUrl)
+                                    .placeholder(android.R.drawable.ic_menu_gallery)
+                                    .error(android.R.drawable.ic_dialog_alert)
+                                    .into(ivAvatar);
+                        }
+                    }
+                } else {
+                    Toast.makeText(ProfileActivity.this, "Không thể tải thông tin cá nhân!", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ProfileResponse> call, Throwable t) {
+                Toast.makeText(ProfileActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
